@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitness Plan Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          animation: {
+            'spin-slow': 'spin 1s linear infinite',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white py-12 px-4">
+
+  <div class="max-w-2xl mx-auto">
+
+    <!-- Header -->
+    <div class="text-center mb-10">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-emerald-500 rounded-2xl mb-4 shadow-lg shadow-emerald-500/30">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <h1 class="text-4xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-400 text-transparent bg-clip-text">Fitness Plan Builder</h1>
+      <p class="mt-2 text-emerald-400 font-medium text-sm uppercase tracking-widest">Powered by Llama 3</p>
+      <p class="mt-3 text-slate-400 text-base max-w-md mx-auto">
+        Tell us about your goals and we'll generate a personalized workout routine just for you.
+      </p>
+    </div>
+
+    <!-- Form Card -->
+    <div class="bg-slate-800/60 backdrop-blur border border-slate-700/50 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-8">
+      <form id="fitnessForm" class="space-y-6">
+
+        <!-- Fitness Goal -->
+        <div>
+          <label for="goal" class="block text-sm font-semibold text-slate-300 mb-2">
+            Fitness Goal
+          </label>
+          <div class="relative">
+            <select
+              id="goal"
+              name="goal"
+              class="w-full bg-slate-900/70 border border-slate-600 text-white rounded-xl px-4 py-3 pr-10 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-slate-400 transition duration-200 placeholder-slate-500"
+            >
+              <option value="Weight Loss">Weight Loss</option>
+              <option value="Muscle Gain">Muscle Gain</option>
+              <option value="Endurance">Endurance</option>
+              <option value="General Health">General Health</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Experience Level -->
+        <div>
+          <label for="level" class="block text-sm font-semibold text-slate-300 mb-2">
+            Experience Level
+          </label>
+          <div class="relative">
+            <select
+              id="level"
+              name="level"
+              class="w-full bg-slate-900/70 border border-slate-600 text-white rounded-xl px-4 py-3 pr-10 appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-slate-400 transition duration-200"
+            >
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two-column row: Days per week + Session length -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+          <!-- Workout Days per Week -->
+          <div>
+            <label for="days_per_week" class="block text-sm font-semibold text-slate-300 mb-2">
+              Workout Days per Week
+            </label>
+            <input
+              type="number"
+              id="days_per_week"
+              name="days_per_week"
+              min="1"
+              max="7"
+              value="3"
+              class="w-full bg-slate-900/70 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-slate-400 transition duration-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <p class="mt-1 text-xs text-slate-500">Between 1 and 7 days</p>
+          </div>
+
+          <!-- Session Length -->
+          <div>
+            <label for="session_length" class="block text-sm font-semibold text-slate-300 mb-2">
+              Session Length <span class="text-slate-500 font-normal">(minutes)</span>
+            </label>
+            <input
+              type="number"
+              id="session_length"
+              name="session_length"
+              min="10"
+              max="180"
+              value="45"
+              class="w-full bg-slate-900/70 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-slate-400 transition duration-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <p class="mt-1 text-xs text-slate-500">Between 10 and 180 min</p>
+          </div>
+
+        </div>
+
+        <!-- Workout Type -->
+        <div>
+          <label for="workout_type" class="block text-sm font-semibold text-slate-300 mb-2">
+            Workout Type
+          </label>
+          <input
+            type="text"
+            id="workout_type"
+            name="workout_type"
+            placeholder="e.g., Gym, Home, Running"
+            class="w-full bg-slate-900/70 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-slate-400 transition duration-200 placeholder-slate-500"
+          />
+        </div>
+
+        <!-- Additional Notes -->
+        <div>
+          <label for="notes" class="block text-sm font-semibold text-slate-300 mb-2">
+            Additional Notes <span class="text-slate-500 font-normal">(optional)</span>
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows="4"
+            placeholder="Any injuries, equipment available, personal preferences..."
+            class="w-full bg-slate-900/70 border border-slate-600 text-white rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent hover:border-slate-400 transition duration-200 placeholder-slate-500 resize-none"
+          ></textarea>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:from-blue-700 active:to-indigo-700 text-white font-bold py-4 rounded-xl text-base tracking-wide transition-all duration-200 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-400/50 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800 flex items-center justify-center gap-2 group"
+        >
+          <svg class="w-5 h-5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Generate My Plan
+        </button>
+
+      </form>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="hidden mt-8">
+      <div class="bg-slate-800/60 backdrop-blur border border-slate-700/50 rounded-2xl p-8 flex flex-col items-center gap-4">
+        <div class="relative w-14 h-14">
+          <div class="absolute inset-0 rounded-full border-4 border-slate-700"></div>
+          <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-500 animate-spin"></div>
+        </div>
+        <p class="text-slate-300 font-medium text-lg animate-pulse">Building your routine...</p>
+        <p class="text-slate-500 text-sm animate-pulse">This may take a few moments</p>
+      </div>
+    </div>
+
+    <!-- Results Area -->
+    <div id="resultsArea" class="hidden mt-8">
+      <div class="bg-slate-800/60 backdrop-blur border border-slate-700/50 rounded-2xl p-8">
+        <div class="flex items-center gap-3 mb-6 pb-4 border-b border-slate-700/50">
+          <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 class="text-lg font-bold text-white">Your Personalized Plan</h2>
+        </div>
+        <div
+          id="planContent"
+          class="text-slate-300 leading-relaxed whitespace-pre-wrap text-sm font-mono border-l-4 border-indigo-500/60 pl-5 bg-indigo-950/20 rounded-r-xl py-4 pr-4"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-center text-slate-600 text-xs mt-8">
+      Generated plans are AI-powered suggestions. Consult a fitness professional before starting any new program.
+    </p>
+
+  </div>
+
+  <script>
+    const form        = document.getElementById('fitnessForm');
+    const submitBtn   = form.querySelector('button[type="submit"]');
+    const loading     = document.getElementById('loading');
+    const resultsArea = document.getElementById('resultsArea');
+    const planContent = document.getElementById('planContent');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Update UI to loading state
+      submitBtn.disabled = true;
+      submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
+      loading.classList.remove('hidden');
+      resultsArea.classList.add('hidden');
+
+      const payload = {
+        goal:           document.getElementById('goal').value,
+        level:          document.getElementById('level').value,
+        days_per_week:  document.getElementById('days_per_week').value,
+        session_length: document.getElementById('session_length').value,
+        workout_type:   document.getElementById('workout_type').value,
+        notes:          document.getElementById('notes').value,
+      };
+
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server responded with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        planContent.textContent = data.plan ?? JSON.stringify(data, null, 2);
+      } catch {
+        planContent.textContent =
+          'Frontend is successfully capturing data! Waiting for the backend connection to display your custom Llama 3 routine.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        loading.classList.add('hidden');
+        resultsArea.classList.remove('hidden');
+      }
+    });
+  </script>
+
+</body>
+</html>
