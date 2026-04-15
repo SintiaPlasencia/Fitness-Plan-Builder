@@ -15,7 +15,7 @@ This project aims to help users stay consistent, motivated, and achieve their he
   * Experience level (beginner, intermediate, advanced)
   * Workout days per week
   * Preferred workout type (gym, home, running, etc.)
-  
+
 * AI-generated output includes:
 
   * Weekly workout schedule
@@ -55,7 +55,7 @@ This project aims to help users stay consistent, motivated, and achieve their he
 
 ## Demo
 
-* Colab Notebook: (add your link here)
+* Colab Notebook: https://colab.research.google.com/drive/19_Ta7TMxgIITsovs1mTL7TqvEvd3XFJh?usp=sharing
 * GitHub Repo: https://github.com/SintiaPlasencia/Fitness-Plan-Builder
 
 ## How to Run (Simple Version)
