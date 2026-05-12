@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create Account</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-900 text-white flex items-center justify-center p-6">
+
+  <div class="bg-slate-800 p-8 rounded-2xl w-full max-w-md">
+    <h1 class="text-3xl font-bold mb-6 text-emerald-400">Create Account</h1>
+
+    {% if error %}
+      <p class="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST" class="space-y-4">
+      <input name="name" placeholder="Name" class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+      <input name="email" type="email" placeholder="Email" class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+      <input name="password" type="password" placeholder="Password" class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+      <button class="w-full bg-emerald-500 hover:bg-emerald-400 py-3 rounded-lg font-bold">
+        Register
+      </button>
+    </form>
+
+    <p class="text-slate-400 text-sm mt-4">
+      Already have an account?
+      <a href="/login" class="text-emerald-400">Login</a>
+    </p>
+  </div>
+
+</body>
+</html>

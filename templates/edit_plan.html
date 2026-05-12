@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Workout Plan</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="min-h-screen bg-slate-900 text-white p-6">
+
+  <div class="max-w-5xl mx-auto">
+
+    <a href="/dashboard" class="text-emerald-400 hover:text-emerald-300">
+      ← Back to Dashboard
+    </a>
+
+    <h1 class="text-3xl font-bold mt-6 mb-2">Edit Workout Plan</h1>
+
+    <p class="text-slate-400 mb-6">
+      Update your plan title, summary, workout days, exercises, sets, reps, and tips.
+    </p>
+
+    {% if error %}
+      <p class="bg-red-500/20 text-red-300 p-3 rounded-lg mb-4">
+        {{ error }}
+      </p>
+    {% endif %}
+
+    <form method="POST" class="space-y-8">
+
+      <!-- Plan Title -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <label class="block text-sm font-semibold text-slate-300 mb-2">
+          Plan Title
+        </label>
+
+        <input
+          name="title"
+          value="{{ plan.title }}"
+          class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white"
+        >
+      </div>
+
+      <!-- Summary -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <label class="block text-sm font-semibold text-slate-300 mb-2">
+          Summary
+        </label>
+
+        <textarea
+          name="summary"
+          rows="3"
+          class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white"
+        >{{ plan_data.summary }}</textarea>
+      </div>
+
+      <!-- Calendar Days -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h2 class="text-2xl font-bold mb-4">Weekly Calendar</h2>
+
+        <div class="space-y-6">
+          {% for day in plan_data.calendar %}
+            {% set day_index = loop.index0 %}
+
+            <div class="bg-slate-900 p-5 rounded-xl border border-slate-700">
+              <h3 class="text-emerald-400 font-bold mb-4">
+                {{ day.day }}
+              </h3>
+
+              <input
+                type="hidden"
+                name="day_{{ day_index }}_day"
+                value="{{ day.day }}"
+              >
+
+              <label class="block text-sm text-slate-300 mb-2">
+                Focus
+              </label>
+
+              <input
+                name="day_{{ day_index }}_focus"
+                value="{{ day.focus }}"
+                class="w-full p-3 mb-4 rounded-lg bg-slate-800 border border-slate-700 text-white"
+              >
+
+              <h4 class="text-white font-semibold mb-3">Exercises</h4>
+
+              <div class="space-y-4">
+                {% for exercise in day.exercises %}
+                  {% set exercise_index = loop.index0 %}
+
+                  <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-800 p-4 rounded-lg">
+                    <div>
+                      <label class="block text-xs text-slate-400 mb-1">Exercise</label>
+                      <input
+                        name="day_{{ day_index }}_exercise_{{ exercise_index }}_name"
+                        value="{{ exercise.name }}"
+                        class="w-full p-2 rounded bg-slate-900 border border-slate-700"
+                      >
+                    </div>
+
+                    <div>
+                      <label class="block text-xs text-slate-400 mb-1">Sets</label>
+                      <input
+                        name="day_{{ day_index }}_exercise_{{ exercise_index }}_sets"
+                        value="{{ exercise.sets }}"
+                        class="w-full p-2 rounded bg-slate-900 border border-slate-700"
+                      >
+                    </div>
+
+                    <div>
+                      <label class="block text-xs text-slate-400 mb-1">Reps / Time</label>
+                      <input
+                        name="day_{{ day_index }}_exercise_{{ exercise_index }}_reps"
+                        value="{{ exercise.reps }}"
+                        class="w-full p-2 rounded bg-slate-900 border border-slate-700"
+                      >
+                    </div>
+
+                    <div>
+                      <label class="block text-xs text-slate-400 mb-1">Rest</label>
+                      <input
+                        name="day_{{ day_index }}_exercise_{{ exercise_index }}_rest"
+                        value="{{ exercise.rest }}"
+                        class="w-full p-2 rounded bg-slate-900 border border-slate-700"
+                      >
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+        <h2 class="text-2xl font-bold mb-4">Tips</h2>
+
+        <div class="space-y-3">
+          {% for tip in plan_data.tips %}
+            <input
+              name="tip_{{ loop.index0 }}"
+              value="{{ tip }}"
+              class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700 text-white"
+            >
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Hidden counts -->
+      <input type="hidden" name="day_count" value="{{ plan_data.calendar|length }}">
+      <input type="hidden" name="tip_count" value="{{ plan_data.tips|length }}">
+
+      <button class="bg-emerald-500 hover:bg-emerald-400 px-6 py-3 rounded-lg font-bold">
+        Save Changes
+      </button>
+
+    </form>
+
+  </div>
+
+</body>
+</html>

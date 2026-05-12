@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-900 text-white p-6">
+
+  <div class="max-w-6xl mx-auto">
+
+    <div class="flex justify-between items-center mb-8">
+      <div>
+        <h1 class="text-4xl font-bold text-emerald-400">Welcome, {{ user.name }}</h1>
+        <p class="text-slate-400">Your AI-powered fitness dashboard</p>
+      </div>
+
+      <a href="/logout" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg">
+        Logout
+      </a>
+    </div>
+
+    <!-- Profile / Generate Form -->
+    <div class="bg-slate-800 p-6 rounded-2xl mb-8">
+      <h2 class="text-2xl font-bold mb-4">Create or Update Your Fitness Plan</h2>
+
+      <form action="/generate" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <select name="goal" class="p-3 rounded-lg bg-slate-900 border border-slate-700">
+          <option value="Weight Loss">Weight Loss</option>
+          <option value="Muscle Gain">Muscle Gain</option>
+          <option value="Endurance">Endurance</option>
+          <option value="General Health">General Health</option>
+        </select>
+
+        <select name="level" class="p-3 rounded-lg bg-slate-900 border border-slate-700">
+          <option value="Beginner">Beginner</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Advanced">Advanced</option>
+        </select>
+
+        <input name="days_per_week" type="number" min="1" max="7" placeholder="Days per week" class="p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+        <input name="session_length" type="number" placeholder="Session length in minutes" class="p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+        <input name="workout_type" placeholder="Workout type: gym, home, running" class="p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+        <input name="equipment" placeholder="Equipment available" class="p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+        <textarea name="limitations" placeholder="Limitations, preferences, notes" class="md:col-span-2 p-3 rounded-lg bg-slate-900 border border-slate-700"></textarea>
+
+        <button class="md:col-span-2 bg-emerald-500 hover:bg-emerald-400 py-3 rounded-lg font-bold">
+          Generate AI Plan
+        </button>
+      </form>
+    </div>
+
+    {% if latest_plan and plan_data %}
+      <!-- Summary -->
+      <div class="bg-slate-800 p-6 rounded-2xl mb-8">
+        <div class="flex justify-between items-center">
+          <h2 class="text-2xl font-bold">Current Plan</h2>
+          <a href="/edit-plan/{{ latest_plan.id }}" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg">
+            Edit Plan
+          </a>
+        </div>
+
+        <p class="text-slate-300 mt-4">
+          {{ plan_data.summary }}
+        </p>
+      </div>
+
+      <!-- Calendar -->
+      <div class="bg-slate-800 p-6 rounded-2xl mb-8">
+        <h2 class="text-2xl font-bold mb-4">Weekly Calendar</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {% for day in plan_data.calendar %}
+            <div class="bg-slate-900 border border-slate-700 rounded-xl p-4">
+              <h3 class="text-emerald-400 font-bold">{{ day.day }}</h3>
+              <p class="font-semibold mt-2">{{ day.focus }}</p>
+
+              <div class="mt-3 space-y-2">
+                {% for exercise in day.exercises %}
+                  <div class="text-sm text-slate-300 border-t border-slate-700 pt-2">
+                    <p class="font-semibold text-white">{{ exercise.name }}</p>
+                    <p>Sets: {{ exercise.sets }}</p>
+                    <p>Reps/Time: {{ exercise.reps }}</p>
+                    <p>Rest: {{ exercise.rest }}</p>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="bg-slate-800 p-6 rounded-2xl mb-8">
+        <h2 class="text-2xl font-bold mb-4">AI Tips</h2>
+
+        <ul class="list-disc list-inside text-slate-300">
+          {% for tip in plan_data.tips %}
+            <li>{{ tip }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- Feedback -->
+      <div class="bg-slate-800 p-6 rounded-2xl mb-8">
+        <h2 class="text-2xl font-bold mb-4">Plan Feedback</h2>
+
+        <form action="/feedback" method="POST" class="space-y-4">
+          <input type="hidden" name="plan_id" value="{{ latest_plan.id }}">
+
+          <select name="rating" class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700">
+            <option value="Too Easy">Too Easy</option>
+            <option value="Just Right">Just Right</option>
+            <option value="Too Hard">Too Hard</option>
+          </select>
+
+          <textarea name="notes" placeholder="What would you change?" class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700"></textarea>
+
+          <button class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg">
+            Save Feedback
+          </button>
+        </form>
+      </div>
+    {% endif %}
+
+    <!-- Progress Photos -->
+    <div class="bg-slate-800 p-6 rounded-2xl mb-8">
+      <h2 class="text-2xl font-bold mb-4">Progress Pictures</h2>
+
+      <form action="/upload-photo" method="POST" enctype="multipart/form-data" class="space-y-4 mb-6">
+        <input type="file" name="photo" accept="image/*" class="w-full">
+
+        <input name="caption" placeholder="Caption or note" class="w-full p-3 rounded-lg bg-slate-900 border border-slate-700">
+
+        <button class="bg-emerald-500 hover:bg-emerald-400 px-4 py-2 rounded-lg font-bold">
+          Upload Photo
+        </button>
+      </form>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {% for photo in photos %}
+          <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+            <img src="{{ url_for('static', filename='uploads/' + photo.filename) }}" class="rounded-lg mb-3">
+            <p class="text-slate-300 text-sm">{{ photo.caption }}</p>
+            <p class="text-slate-500 text-xs mt-2">{{ photo.created_at }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>
