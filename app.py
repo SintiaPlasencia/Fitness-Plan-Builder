@@ -8,6 +8,7 @@ from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from transformers import pipeline
 
 
 app = Flask(__name__)
@@ -17,7 +18,15 @@ DATABASE = "fitness_app.db"
 UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
+MODEL_NAME = os.getenv("LLM_MODEL", "meta-llama/Llama-3.2-3B-Instruct")
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+llama_generator = pipeline(
+    "text-generation",
+    model=MODEL_NAME,
+    device_map="auto"
+)
 
 
 def get_db():
@@ -105,6 +114,7 @@ def login_required(route):
         if "user_id" not in session:
             return redirect(url_for("login"))
         return route(*args, **kwargs)
+
     return wrapper
 
 
@@ -123,10 +133,156 @@ def current_user():
 
 
 def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
-def generate_llm_plan(goal, level, days_per_week, workout_type, session_length, equipment, limitations):
+def clean_model_text(text):
+    if not text:
+        return ""
+
+    text = text.replace("```json", "")
+    text = text.replace("```JSON", "")
+    text = text.replace("```", "")
+    text = text.strip()
+
+    return text
+
+
+def is_bad_placeholder(value):
+    bad_values = {
+        "string",
+        "number",
+        "integer",
+        "exercise name",
+        "workout focus",
+        "tip 1",
+        "tip 2",
+        "tip 3",
+        ""
+    }
+
+    return str(value).strip().lower() in bad_values
+
+
+def validate_plan_json(plan_json):
+    if not isinstance(plan_json, dict):
+        return False
+
+    if "summary" not in plan_json:
+        return False
+
+    if is_bad_placeholder(plan_json["summary"]):
+        return False
+
+    if "calendar" not in plan_json:
+        return False
+
+    if "tips" not in plan_json:
+        return False
+
+    if not isinstance(plan_json["calendar"], list):
+        return False
+
+    if len(plan_json["calendar"]) == 0:
+        return False
+
+    if not isinstance(plan_json["tips"], list):
+        return False
+
+    for tip in plan_json["tips"]:
+        if is_bad_placeholder(tip):
+            return False
+
+    for day in plan_json["calendar"]:
+        if not isinstance(day, dict):
+            return False
+
+        if "day" not in day:
+            return False
+
+        if "focus" not in day:
+            return False
+
+        if "exercises" not in day:
+            return False
+
+        if is_bad_placeholder(day["day"]):
+            return False
+
+        if is_bad_placeholder(day["focus"]):
+            return False
+
+        if not isinstance(day["exercises"], list):
+            return False
+
+        if len(day["exercises"]) == 0:
+            return False
+
+        for exercise in day["exercises"]:
+            if not isinstance(exercise, dict):
+                return False
+
+            for key in ["name", "sets", "reps", "rest"]:
+                if key not in exercise:
+                    return False
+
+                if is_bad_placeholder(exercise[key]):
+                    return False
+
+    return True
+
+
+def extract_json_from_response(text):
+    """
+    Llama sometimes returns more than one JSON object.
+    This function searches through the output and returns the first JSON object
+    that passes validation and does not contain placeholder values.
+    """
+    text = clean_model_text(text)
+    decoder = json.JSONDecoder()
+
+    try:
+        plan_json = json.loads(text)
+
+        if validate_plan_json(plan_json):
+            print("\nVALID JSON FOUND USING DIRECT LOAD.\n")
+            return plan_json
+
+    except Exception as error:
+        print("\nDIRECT JSON LOAD FAILED:")
+        print(error)
+
+    valid_options = []
+
+    for index, char in enumerate(text):
+        if char == "{":
+            try:
+                parsed_json, end_index = decoder.raw_decode(text[index:])
+
+                print("\n================ JSON CANDIDATE FOUND ================\n")
+                print(json.dumps(parsed_json, indent=2))
+                print("\n======================================================\n")
+
+                if validate_plan_json(parsed_json):
+                    valid_options.append(parsed_json)
+
+            except Exception:
+                continue
+
+    if valid_options:
+        print("\nVALID LLAMA JSON SELECTED.\n")
+        return valid_options[0]
+
+    print("\nJSON EXTRACTION FAILED: No valid workout JSON found.")
+    return None
+
+
+def fallback_plan(goal, level, days_per_week, workout_type, session_length, equipment, limitations):
+    print("\nUSING FALLBACK PLAN because Llama JSON was invalid.\n")
+
     try:
         days = int(days_per_week)
     except ValueError:
@@ -216,15 +372,13 @@ def generate_llm_plan(goal, level, days_per_week, workout_type, session_length, 
         }
     ]
 
-    selected_calendar = workout_days[:days]
-
     plan_json = {
         "summary": (
             f"This is a {days}-day {workout_type} fitness plan for a {level} user "
             f"focused on {goal}. Each session is designed to be around "
             f"{session_length} minutes and uses {equipment}. Limitations/notes: {limitations}."
         ),
-        "calendar": selected_calendar,
+        "calendar": workout_days[:days],
         "tips": [
             "Warm up for 5 minutes before each workout.",
             "Focus on proper form before increasing weight.",
@@ -232,7 +386,137 @@ def generate_llm_plan(goal, level, days_per_week, workout_type, session_length, 
         ]
     }
 
-    raw_text = json.dumps(plan_json, indent=2)
+    return plan_json
+
+
+def generate_llm_plan(
+    goal,
+    level,
+    days_per_week,
+    workout_type,
+    session_length,
+    equipment,
+    limitations
+):
+    try:
+        days = int(days_per_week)
+    except ValueError:
+        days = 3
+
+    days = max(1, min(days, 7))
+
+    if not goal:
+        goal = "General Health"
+
+    if not level:
+        level = "Beginner"
+
+    if not workout_type:
+        workout_type = "gym"
+
+    if not session_length:
+        session_length = "45"
+
+    if not equipment:
+        equipment = "basic gym equipment"
+
+    if not limitations:
+        limitations = "none"
+
+    prompt = f"""
+Create one personalized fitness plan as valid JSON only.
+
+User:
+Goal: {goal}
+Level: {level}
+Workout days per week: {days}
+Workout type: {workout_type}
+Session length: {session_length} minutes
+Equipment: {equipment}
+Limitations: {limitations}
+
+Return exactly one JSON object with:
+- summary
+- calendar
+- tips
+
+Use this completed example as the style, but create a NEW plan for the user:
+
+{{
+  "summary": "This is a 3-day beginner gym plan focused on weight loss using dumbbells and treadmill cardio.",
+  "calendar": [
+    {{
+      "day": "Monday",
+      "focus": "Full Body Strength",
+      "exercises": [
+        {{
+          "name": "Goblet Squats",
+          "sets": "3",
+          "reps": "12",
+          "rest": "60 sec"
+        }},
+        {{
+          "name": "Dumbbell Chest Press",
+          "sets": "3",
+          "reps": "10",
+          "rest": "60 sec"
+        }},
+        {{
+          "name": "Treadmill Walk",
+          "sets": "1",
+          "reps": "15 min",
+          "rest": "none"
+        }}
+      ]
+    }}
+  ],
+  "tips": [
+    "Start with lighter weights until your form feels comfortable.",
+    "Keep rest periods consistent.",
+    "Track your workouts weekly."
+  ]
+}}
+
+Rules:
+- Return JSON only.
+- Do not explain anything.
+- Do not use the word string as a placeholder.
+- Create exactly {days} workout days.
+- Each workout day must have at least 3 exercises.
+- Use real weekdays.
+- Use the user's actual goal, level, workout type, equipment, and limitations.
+- Every exercise must include name, sets, reps, and rest.
+"""
+
+    result = llama_generator(
+        prompt,
+        max_new_tokens=700,
+        do_sample=False,
+        return_full_text=False
+    )
+
+    raw_text = result[0]["generated_text"]
+
+    print("\n================ RAW LLAMA OUTPUT ================\n")
+    print(raw_text)
+    print("\n==================================================\n")
+
+    raw_text = clean_model_text(raw_text)
+
+    plan_json = extract_json_from_response(raw_text)
+
+    if not validate_plan_json(plan_json):
+        plan_json = fallback_plan(
+            goal,
+            level,
+            days,
+            workout_type,
+            session_length,
+            equipment,
+            limitations
+        )
+        raw_text = json.dumps(plan_json, indent=2)
+
     return plan_json, raw_text
 
 
@@ -263,7 +547,12 @@ def register():
                     INSERT INTO users (name, email, password_hash, created_at)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (name, email, generate_password_hash(password), datetime.now().isoformat())
+                    (
+                        name,
+                        email,
+                        generate_password_hash(password),
+                        datetime.now().isoformat()
+                    )
                 )
                 conn.commit()
                 conn.close()
@@ -475,7 +764,6 @@ def edit_plan(plan_id):
             focus = request.form.get(f"day_{day_index}_focus", "")
 
             exercises = []
-
             exercise_index = 0
 
             while True:
