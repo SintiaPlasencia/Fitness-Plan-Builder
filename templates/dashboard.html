@@ -2,6 +2,728 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — AI Fitness</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ── Obsidian base ── */
+    body { background-color: #09090b; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #18181b; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+
+    /* Glow effects */
+    .glow-emerald { box-shadow: 0 0 18px -4px rgba(16,185,129,.45); }
+    .glow-indigo  { box-shadow: 0 0 18px -4px rgba(99,102,241,.45); }
+
+    /* Tab active underline */
+    .day-tab.active {
+      color: #10b981;
+      border-bottom-color: #10b981;
+    }
+
+    /* Photo hover overlay */
+    .photo-card .overlay {
+      opacity: 0;
+      transition: opacity .3s ease;
+    }
+    .photo-card:hover .overlay { opacity: 1; }
+    .photo-card img { transition: transform .35s ease; }
+    .photo-card:hover img { transform: scale(1.05); }
+
+    /* Lightbox */
+    #lightbox {
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Loading ring */
+    @keyframes spin-ring { to { transform: rotate(360deg); } }
+    .spin-ring { animation: spin-ring 1s linear infinite; }
+
+    /* Completed exercise */
+    .exercise-row.done .exercise-label {
+      text-decoration: line-through;
+      opacity: .4;
+    }
+
+    /* Custom toggle */
+    .toggle-checkbox:checked + .toggle-track { background-color: #10b981; }
+    .toggle-checkbox:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
+
+    /* ── STAGGERED ENTRANCE ANIMATION ── */
+    @keyframes card-enter {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card-animate {
+      opacity: 0;
+      animation: card-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* ── PROGRESS BAR GLOW PULSE ── */
+    @keyframes bar-pulse {
+      0%, 100% { box-shadow: 0 0 10px -2px rgba(16,185,129,.5); }
+      50%       { box-shadow: 0 0 20px -2px rgba(16,185,129,.9); }
+    }
+    #progress-fill {
+      transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      animation: bar-pulse 2.5s ease-in-out infinite;
+    }
+
+    /* ── TOAST ── */
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(110%); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes toast-out {
+      from { opacity: 1; transform: translateX(0); }
+      to   { opacity: 0; transform: translateX(110%); }
+    }
+    .toast-item {
+      animation: toast-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .toast-item.leaving {
+      animation: toast-out 0.3s ease-in forwards;
+    }
+
+    /* ── EMPTY STATE SOFT GLOW ── */
+    .empty-glow {
+      box-shadow: 0 0 60px -20px rgba(16,185,129,.18);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-zinc-100 antialiased">
+
+  <!-- ══════════════════════════════════════════ NAV ══ -->
+  <header class="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="inline-flex items-center justify-center w-9 h-9 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        </span>
+        <span class="font-semibold tracking-wide text-zinc-100">PlanPulse</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="hidden sm:block text-sm text-zinc-400">
+          Welcome back, <span class="text-emerald-400 font-medium">{{ user.name }}</span>
+        </span>
+        <a href="/logout"
+           class="text-xs font-medium px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors">
+          Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-10 space-y-10">
+
+    <!-- ══════════════════════════════ HERO GREETING ══ -->
+    <div class="card-animate" style="animation-delay: 0ms;">
+      <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight">
+        Good&nbsp;day,&nbsp;<span class="text-emerald-400">{{ user.name }}</span>.
+      </h1>
+      <p class="mt-2 text-zinc-500 text-lg">Your AI-powered fitness command centre.</p>
+    </div>
+
+    <!-- ══════════════════════════════ GENERATE FORM ══ -->
+    <section id="generate-section" class="card-animate bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8"
+             style="animation-delay: 80ms;">
+      <h2 class="text-xl font-bold mb-1 flex items-center gap-2">
+        <span class="text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V17a1 1 0 0 1-2 0v-.07A8 8 0 0 1 4.07 9H5a1 1 0 0 1 0 2 6 6 0 0 0 5 5.92zM17 12a1 1 0 0 1 0-2 6 6 0 0 0-5-5.92V4a1 1 0 0 1 2 0v.07A8 8 0 0 1 19.93 11H19a1 1 0 0 1-2 0z"/></svg>
+        </span>
+        Create&nbsp;/&nbsp;Update Your Fitness Plan
+      </h2>
+      <p class="text-zinc-500 text-sm mb-6">Fill in your details and let the AI forge a personalised routine.</p>
+
+      <!-- Validation error banner -->
+      <div id="form-error"
+           class="hidden mb-4 flex items-center gap-3 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <span id="form-error-msg">Days per week must be between 1 and 7.</span>
+      </div>
+
+      <form id="generate-form" action="/generate" method="POST"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <select name="goal"
+                class="p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 focus:outline-none focus:border-emerald-500 transition-colors">
+          <option value="Weight Loss">Weight Loss</option>
+          <option value="Muscle Gain">Muscle Gain</option>
+          <option value="Endurance">Endurance</option>
+          <option value="General Health">General Health</option>
+        </select>
+
+        <select name="level"
+                class="p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 focus:outline-none focus:border-emerald-500 transition-colors">
+          <option value="Beginner">Beginner</option>
+          <option value="Intermediate">Intermediate</option>
+          <option value="Advanced">Advanced</option>
+        </select>
+
+        <input id="days_per_week" name="days_per_week" type="number" min="1" max="7"
+               placeholder="Training days per week (1–7)"
+               class="p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors">
+
+        <input name="session_length" type="number"
+               placeholder="Session length in minutes (e.g. 60)"
+               class="p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors">
+
+        <input name="workout_type"
+               placeholder="Workout type: Gym, Home, Running, HIIT"
+               class="p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors">
+
+        <input name="equipment"
+               placeholder="Equipment: Kettlebells, squat rack, pull-up bar"
+               class="p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors">
+
+        <textarea name="limitations" rows="3"
+                  placeholder="Goals &amp; limits: Focus on power cleans, avoid high-impact cardio, bad left knee"
+                  class="md:col-span-2 p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors resize-none"></textarea>
+
+        <button type="submit" id="generate-btn"
+                class="md:col-span-2 bg-emerald-500 hover:bg-emerald-400 active:scale-95 py-3.5 rounded-xl font-bold text-zinc-950 tracking-wide transition-all glow-emerald">
+          ⚡ Generate AI Plan
+        </button>
+      </form>
+    </section>
+
+    <!-- ══════════════ LOADING OVERLAY (shown on submit) ══ -->
+    <div id="loading-overlay"
+         class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-zinc-950/90 backdrop-blur-sm">
+      <div class="relative w-24 h-24">
+        <div class="spin-ring absolute inset-0 rounded-full border-4 border-transparent border-t-emerald-400 border-r-emerald-600"></div>
+        <div class="spin-ring absolute inset-3 rounded-full border-4 border-transparent border-b-emerald-300/60"
+             style="animation-direction:reverse; animation-duration:.7s;"></div>
+        <div class="absolute inset-0 flex items-center justify-center">
+          <div class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></div>
+        </div>
+      </div>
+      <p class="mt-8 text-lg font-semibold text-zinc-200 tracking-wide">Forging your custom routine…</p>
+      <p class="mt-1 text-sm text-zinc-500">The AI is building your personalised plan.</p>
+    </div>
+
+    {% if latest_plan and plan_data %}
+
+    <!-- ══════════════════════════════ PLAN SUMMARY ══ -->
+    <section class="card-animate bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8"
+             style="animation-delay: 160ms;">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <h2 class="text-xl font-bold flex items-center gap-2">
+          <span class="text-emerald-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </span>
+          Current Plan
+        </h2>
+        <a href="/edit-plan/{{ latest_plan.id }}"
+           class="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30 transition-colors glow-indigo">
+          ✏️ Edit Plan
+        </a>
+      </div>
+      <p class="text-zinc-300 leading-relaxed">{{ plan_data.summary }}</p>
+    </section>
+
+    <!-- ══════════════════════ WEEKLY PROGRESS TRACKER ══ -->
+    <section class="card-animate bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8"
+             style="animation-delay: 240ms;">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <h2 class="text-xl font-bold flex items-center gap-2">
+          <span class="text-emerald-400">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </span>
+          Weekly Progress
+        </h2>
+        <span class="text-sm font-semibold text-zinc-400" id="progress-label">
+          Loading…
+        </span>
+      </div>
+
+      <!-- Track -->
+      <div class="relative h-3 w-full rounded-full bg-zinc-800 overflow-hidden">
+        <div id="progress-fill"
+             class="h-full rounded-full"
+             style="width: 0%; background: linear-gradient(90deg, #059669, #10b981, #34d399);">
+        </div>
+      </div>
+
+      <!-- Sub-text -->
+      <p class="mt-3 text-xs text-zinc-600" id="progress-subtext">
+        Toggle the checkboxes in the calendar below to track your workouts.
+      </p>
+    </section>
+
+    <!-- ════════════════════════════ TABBED CALENDAR ══ -->
+    <section class="card-animate bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8"
+             style="animation-delay: 320ms;">
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-2">
+        <span class="text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </span>
+        Weekly Calendar
+      </h2>
+
+      <!-- Day tabs -->
+      <div class="flex flex-wrap gap-2 mb-6 border-b border-zinc-800 pb-1" role="tablist">
+        {% for day in plan_data.calendar %}
+          <button
+            class="day-tab {% if loop.first %}active{% endif %} px-4 py-2 text-sm font-semibold text-zinc-400 border-b-2 border-transparent hover:text-zinc-200 transition-all focus:outline-none"
+            data-target="day-panel-{{ loop.index }}"
+            role="tab"
+            type="button">
+            {{ day.day }}
+          </button>
+        {% endfor %}
+      </div>
+
+      <!-- Day panels -->
+      {% for day in plan_data.calendar %}
+        <div id="day-panel-{{ loop.index }}"
+             class="day-panel {% if not loop.first %}hidden{% endif %}">
+
+          <!-- Focus badge -->
+          <div class="flex items-center gap-3 mb-5">
+            <span class="text-2xl font-bold text-emerald-400">{{ day.day }}</span>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 tracking-wide">
+              {{ day.focus }}
+            </span>
+          </div>
+
+          <!-- Exercises -->
+          <div class="space-y-3">
+            {% for exercise in day.exercises %}
+              {% set ex_key = day.day | replace(' ', '_') ~ '_' ~ exercise.name | replace(' ', '_') %}
+              <div class="exercise-row group flex items-start gap-4 bg-zinc-950 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors"
+                   data-key="{{ ex_key }}">
+
+                <!-- Toggle -->
+                <div class="flex-shrink-0 mt-0.5">
+                  <label class="relative inline-block w-10 h-5 cursor-pointer" title="Mark complete">
+                    <input type="checkbox" class="toggle-checkbox sr-only"
+                           data-key="{{ ex_key }}"
+                           onchange="toggleExercise(this)">
+                    <span class="toggle-track absolute inset-0 rounded-full bg-zinc-700 transition-colors duration-300">
+                      <span class="toggle-thumb absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-300"></span>
+                    </span>
+                  </label>
+                </div>
+
+                <!-- Details -->
+                <div class="flex-1 min-w-0">
+                  <p class="exercise-label font-semibold text-zinc-100 transition-all">{{ exercise.name }}</p>
+                  <div class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+                    <span class="flex items-center gap-1">
+                      <span class="text-emerald-500">●</span> Sets: <span class="text-zinc-300 ml-0.5">{{ exercise.sets }}</span>
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <span class="text-emerald-500">●</span> Reps/Time: <span class="text-zinc-300 ml-0.5">{{ exercise.reps }}</span>
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <span class="text-emerald-500">●</span> Rest: <span class="text-zinc-300 ml-0.5">{{ exercise.rest }}</span>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Done badge -->
+                <span class="done-badge hidden flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Done ✓
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </section>
+
+    <!-- ══════════════════════════════════ AI TIPS ══ -->
+    <section class="card-animate bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8"
+             style="animation-delay: 400ms;">
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-2">
+        <span class="text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 1 7 7c0 2.62-1.44 4.9-3.57 6.14L15 17H9l-.43-1.86A7 7 0 0 1 12 2zM9 19h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1z"/></svg>
+        </span>
+        AI Tips
+      </h2>
+      <ul class="space-y-2">
+        {% for tip in plan_data.tips %}
+          <li class="flex items-start gap-3 text-zinc-300 text-sm">
+            <span class="mt-0.5 w-5 h-5 flex-shrink-0 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-xs font-bold">
+              {{ loop.index }}
+            </span>
+            {{ tip }}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <!-- ════════════════════════════════ FEEDBACK ══ -->
+    <section class="card-animate bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8"
+             style="animation-delay: 480ms;">
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-2">
+        <span class="text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        Plan Feedback
+      </h2>
+      <form action="/feedback" method="POST" class="space-y-4">
+        <input type="hidden" name="plan_id" value="{{ latest_plan.id }}">
+
+        <select name="rating"
+                class="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors">
+          <option value="Too Easy">Too Easy</option>
+          <option value="Just Right">Just Right</option>
+          <option value="Too Hard">Too Hard</option>
+        </select>
+
+        <textarea name="notes" rows="3" placeholder="What would you like to change or improve?"
+                  class="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 transition-colors resize-none"></textarea>
+
+        <button type="submit"
+                class="px-6 py-3 rounded-xl font-bold text-sm bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30 active:scale-95 transition-all glow-indigo">
+          Save Feedback
+        </button>
+      </form>
+    </section>
+
+    {% else %}
+
+    <!-- ══════════════ EMPTY STATE — NO PLAN YET ══ -->
+    <section class="card-animate empty-glow bg-zinc-900 border border-zinc-800 rounded-2xl p-12 flex flex-col items-center justify-center text-center"
+             style="animation-delay: 160ms;">
+      <!-- Dumbbell icon -->
+      <div class="relative mb-6">
+        <div class="absolute inset-0 rounded-full bg-emerald-500/10 blur-2xl scale-150"></div>
+        <div class="relative w-20 h-20 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-9 h-9 text-emerald-500/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <!-- Dumbbell: plates + bar -->
+            <rect x="1" y="10" width="4" height="4" rx="1"/>
+            <rect x="19" y="10" width="4" height="4" rx="1"/>
+            <rect x="5" y="8" width="2" height="8" rx="1"/>
+            <rect x="17" y="8" width="2" height="8" rx="1"/>
+            <line x1="7" y1="12" x2="17" y2="12"/>
+          </svg>
+        </div>
+      </div>
+
+      <h3 class="text-2xl font-bold text-zinc-100 mb-2">Your journey starts here.</h3>
+      <p class="text-zinc-500 max-w-md leading-relaxed mb-6">
+        Generate your first AI-powered fitness plan above to unlock your weekly calendar,
+        personalised tips, and progress tracking.
+      </p>
+
+      <!-- Decorative stat pills -->
+      <div class="flex flex-wrap justify-center gap-3 text-xs font-medium">
+        <span class="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">📅 Weekly Calendar</span>
+        <span class="px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">🧠 AI Coaching Tips</span>
+        <span class="px-3 py-1.5 rounded-full bg-zinc-800 border border-zinc-700 text-zinc-400">📈 Progress Tracking</span>
+      </div>
+
+      <a href="#generate-section"
+         onclick="document.querySelector('#generate-section').scrollIntoView({behavior:'smooth'}); return false;"
+         class="mt-8 inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 active:scale-95 px-6 py-3 rounded-xl font-bold text-zinc-950 text-sm transition-all glow-emerald">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Build My First Plan
+      </a>
+    </section>
+
+    {% endif %}
+
+    <!-- ═══════════════════════════ PROGRESS PHOTOS ══ -->
+    <section class="card-animate bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8"
+             style="animation-delay: 560ms;">
+      <h2 class="text-xl font-bold mb-5 flex items-center gap-2">
+        <span class="text-emerald-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </span>
+        Progress Gallery
+      </h2>
+
+      <!-- Upload form -->
+      <form action="/upload-photo" method="POST" enctype="multipart/form-data"
+            class="flex flex-wrap gap-3 items-end mb-8">
+        <label class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+          <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider">Photo</span>
+          <div class="relative flex items-center gap-3 p-3 rounded-xl bg-zinc-950 border border-zinc-700 hover:border-zinc-500 transition-colors cursor-pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="text-sm text-zinc-500" id="file-label">Choose image…</span>
+            <input type="file" name="photo" accept="image/*" onchange="updateFileLabel(this)"
+                   class="absolute inset-0 opacity-0 cursor-pointer w-full">
+          </div>
+        </label>
+
+        <label class="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+          <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider">Caption</span>
+          <input name="caption" placeholder="Add a note or date…"
+                 class="p-3 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 transition-colors">
+        </label>
+
+        <button type="submit"
+                class="px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 font-bold text-zinc-950 text-sm transition-all glow-emerald whitespace-nowrap">
+          Upload Photo
+        </button>
+      </form>
+
+      <!-- Gallery grid -->
+      {% if photos %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {% for photo in photos %}
+            <div class="photo-card relative overflow-hidden rounded-xl cursor-pointer border border-zinc-800 hover:border-zinc-600 transition-colors"
+                 onclick="openLightbox('{{ url_for('static', filename='uploads/' + photo.filename) }}', '{{ photo.caption }}')">
+              <img src="{{ url_for('static', filename='uploads/' + photo.filename) }}"
+                   alt="{{ photo.caption }}"
+                   class="w-full h-52 object-cover block">
+              <div class="overlay absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/30 to-transparent flex flex-col justify-end p-4">
+                <p class="text-sm font-medium text-zinc-100 leading-snug">{{ photo.caption }}</p>
+                <p class="text-xs text-zinc-400 mt-1">{{ photo.created_at }}</p>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <!-- ══════════════ EMPTY STATE — NO PHOTOS YET ══ -->
+        <div class="empty-glow flex flex-col items-center justify-center py-14 text-center border-2 border-dashed border-zinc-800 rounded-2xl">
+          <div class="relative mb-5">
+            <div class="absolute inset-0 rounded-full bg-emerald-500/8 blur-2xl scale-150"></div>
+            <div class="relative w-16 h-16 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-zinc-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </div>
+          </div>
+          <h3 class="text-base font-semibold text-zinc-300 mb-1">No photos yet</h3>
+          <p class="text-sm text-zinc-600 max-w-xs">
+            Document your transformation. Upload your first progress photo to start your visual timeline.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+
+  </main>
+
+  <!-- ════════════════════════════════ LIGHTBOX ══ -->
+  <div id="lightbox"
+       class="hidden fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80"
+       onclick="closeLightbox(event)">
+    <div class="relative max-w-4xl w-full mx-4">
+      <button onclick="closeLightbox()" type="button"
+              class="absolute -top-10 right-0 text-zinc-400 hover:text-zinc-100 transition-colors text-sm flex items-center gap-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Close
+      </button>
+      <img id="lightbox-img" src="" alt=""
+           class="w-full max-h-[80vh] object-contain rounded-2xl border border-zinc-700">
+      <p id="lightbox-caption" class="text-center text-zinc-400 text-sm mt-4"></p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════ TOAST CONTAINER ══ -->
+  <div id="toast-container"
+       class="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none"
+       aria-live="polite">
+  </div>
+
+  <!-- ════════════════════════════════ SCRIPTS ══ -->
+  <script>
+    /* ══════════════════════════════════════════════════
+       TABBED CALENDAR
+    ══════════════════════════════════════════════════ */
+    document.querySelectorAll('.day-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.day-panel').forEach(p => p.classList.add('hidden'));
+        tab.classList.add('active');
+        const target = document.getElementById(tab.dataset.target);
+        if (target) target.classList.remove('hidden');
+      });
+    });
+
+    /* ══════════════════════════════════════════════════
+       TOAST NOTIFICATIONS
+    ══════════════════════════════════════════════════ */
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+
+      const icons = {
+        success: `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+        info:    `<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-zinc-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>`
+      };
+
+      const toast = document.createElement('div');
+      toast.className = [
+        'toast-item pointer-events-auto',
+        'flex items-center gap-3',
+        'px-4 py-3 rounded-xl',
+        'bg-zinc-900/90 border border-zinc-700/80',
+        'backdrop-blur-md shadow-2xl',
+        'text-sm font-medium text-zinc-200',
+        'min-w-[220px] max-w-xs'
+      ].join(' ');
+
+      toast.innerHTML = `${icons[type] || icons.success}<span>${message}</span>`;
+      container.appendChild(toast);
+
+      // Auto-dismiss after 3 s
+      setTimeout(() => {
+        toast.classList.add('leaving');
+        toast.addEventListener('animationend', () => toast.remove());
+      }, 3000);
+    }
+
+    /* ══════════════════════════════════════════════════
+       PROGRESS BAR
+    ══════════════════════════════════════════════════ */
+    function updateProgressBar() {
+      const all  = document.querySelectorAll('.toggle-checkbox');
+      const done = document.querySelectorAll('.toggle-checkbox:checked');
+      const total = all.length;
+      const count = done.length;
+
+      const fill    = document.getElementById('progress-fill');
+      const label   = document.getElementById('progress-label');
+      const subtext = document.getElementById('progress-subtext');
+
+      if (!fill || !label) return;
+
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      fill.style.width = pct + '%';
+      label.textContent = `${count} of ${total} Exercise${total !== 1 ? 's' : ''} Completed`;
+
+      if (pct === 0) {
+        subtext.textContent = 'Toggle the checkboxes in the calendar below to track your workouts.';
+      } else if (pct === 100) {
+        subtext.textContent = '🏆 Perfect week! Every exercise logged — outstanding work.';
+        subtext.classList.add('text-emerald-500');
+        subtext.classList.remove('text-zinc-600');
+      } else if (pct >= 50) {
+        subtext.textContent = `You're over halfway there — keep the momentum going!`;
+        subtext.classList.remove('text-emerald-500');
+        subtext.classList.add('text-zinc-600');
+      } else {
+        subtext.textContent = `Great start — every rep counts. Keep going!`;
+        subtext.classList.remove('text-emerald-500');
+        subtext.classList.add('text-zinc-600');
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       EXERCISE COMPLETE TOGGLE  (with toast + progress)
+    ══════════════════════════════════════════════════ */
+    function toggleExercise(checkbox) {
+      const key   = checkbox.dataset.key;
+      const row   = checkbox.closest('.exercise-row');
+      const badge = row.querySelector('.done-badge');
+
+      if (checkbox.checked) {
+        localStorage.setItem('exercise_' + key, 'done');
+        row.classList.add('done');
+        if (badge) badge.classList.remove('hidden');
+        showToast('Exercise logged! ✓', 'success');
+      } else {
+        localStorage.removeItem('exercise_' + key);
+        row.classList.remove('done');
+        if (badge) badge.classList.add('hidden');
+        showToast('Exercise unchecked.', 'info');
+      }
+
+      updateProgressBar();
+    }
+
+    /* ══════════════════════════════════════════════════
+       RESTORE COMPLETED EXERCISES ON LOAD
+    ══════════════════════════════════════════════════ */
+    function restoreCompletedExercises() {
+      document.querySelectorAll('.toggle-checkbox').forEach(checkbox => {
+        const key = checkbox.dataset.key;
+        if (localStorage.getItem('exercise_' + key) === 'done') {
+          checkbox.checked = true;
+          const row   = checkbox.closest('.exercise-row');
+          const badge = row ? row.querySelector('.done-badge') : null;
+          if (row)   row.classList.add('done');
+          if (badge) badge.classList.remove('hidden');
+        }
+      });
+      updateProgressBar();
+    }
+    restoreCompletedExercises();
+
+    /* ══════════════════════════════════════════════════
+       LIGHTBOX
+    ══════════════════════════════════════════════════ */
+    function openLightbox(src, caption) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox-caption').textContent = caption || '';
+      document.getElementById('lightbox').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox(event) {
+      if (!event || event.target === document.getElementById('lightbox') || event.currentTarget.tagName === 'BUTTON') {
+        document.getElementById('lightbox').classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeLightbox({ target: document.getElementById('lightbox') });
+    });
+
+    /* ══════════════════════════════════════════════════
+       FILE INPUT LABEL
+    ══════════════════════════════════════════════════ */
+    function updateFileLabel(input) {
+      const label = document.getElementById('file-label');
+      if (input.files && input.files.length > 0) {
+        label.textContent = input.files[0].name;
+        label.classList.add('text-emerald-400');
+      }
+    }
+
+    /* ══════════════════════════════════════════════════
+       FORM VALIDATION + LOADING STATE
+    ══════════════════════════════════════════════════ */
+    const generateForm  = document.getElementById('generate-form');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    const daysInput     = document.getElementById('days_per_week');
+    const formError     = document.getElementById('form-error');
+    const formErrorMsg  = document.getElementById('form-error-msg');
+
+    generateForm.addEventListener('submit', function(e) {
+      formError.classList.add('hidden');
+      const days = parseInt(daysInput.value, 10);
+
+      if (!daysInput.value || isNaN(days) || days < 1 || days > 7) {
+        e.preventDefault();
+        formErrorMsg.textContent = 'Please enter a valid number of training days (1–7).';
+        formError.classList.remove('hidden');
+        daysInput.focus();
+        daysInput.classList.add('border-red-500');
+        return;
+      }
+
+      daysInput.classList.remove('border-red-500');
+      generateForm.querySelectorAll('input, select, textarea, button').forEach(el => {
+        el.style.opacity = '0.4';
+        el.style.pointerEvents = 'none';
+      });
+      loadingOverlay.classList.remove('hidden');
+    });
+
+    daysInput.addEventListener('input', () => {
+      daysInput.classList.remove('border-red-500');
+      formError.classList.add('hidden');
+    });
+  </script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
   <title>Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
